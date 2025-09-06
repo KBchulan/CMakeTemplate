@@ -1,0 +1,9 @@
+# .clang-format 配置文件
+
+BasedOnStyle: Google                       # 遵循 Google 的 C++ 编码风格
+Standard: Latest                           # 按照最新标准解析语法
+ColumnLimit: 120                           # 每行代码的最大长度不超过 120 个字符，超过会自动换行。
+BreakBeforeBraces: Allman                  # 左大括号总是在新的一行开始，而不是跟在函数名或条件语句的行尾。
+AllowShortFunctionsOnASingleLine: None     # 禁止将函数、if 语句、循环等合并到一行。
+NamespaceIndentation: None                 # 命名空间缩进：命名空间内的代码需要进行正常的缩进。
+AccessModifierOffset: -2                   # 让访问修饰符号顶格

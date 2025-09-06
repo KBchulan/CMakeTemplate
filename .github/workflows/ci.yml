@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y cppcheck
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            brew install cppcheck
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            choco install cppcheck
+          fi
+        shell: bash
+
+      - name: Configure
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DENABLE_CPPCHECK=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: |
+          cd build
+          ctest -C Release
+
+      - name: Static Analysis (cppcheck)
+        run: cmake --build build --target cppcheck
+
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check code format
+        run: |
+          scripts/format.sh --check
