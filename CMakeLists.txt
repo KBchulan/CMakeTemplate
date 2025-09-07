@@ -164,6 +164,7 @@ if(ENABLE_CPPCHECK)
       --checkers-report=${CMAKE_BINARY_DIR}/cppcheck-checkers.txt
       --suppress='*:*/_deps/*'
       --suppress='*:*/build/_deps/*'
+      --suppress='*:*/build/*/_deps/*'
       --suppress=missingInclude
       --suppress=missingIncludeSystem
       --project=${CMAKE_BINARY_DIR}/compile_commands.json
