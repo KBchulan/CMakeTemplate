@@ -57,14 +57,12 @@ struct LogMessage
     _formatted_message[_message_length] = '\0';
   }
 
-  static constexpr size_t MAX_MESSAGE_SIZE = global::logger::MAX_MESSAGE_SIZE;
-
   LogLevel _level;
   fmt::text_style _style;
   std::chrono::system_clock::time_point _timestamp;
 
   size_t _message_length{0};
-  std::array<char, MAX_MESSAGE_SIZE> _formatted_message;
+  std::array<char, global::logger::MAX_MESSAGE_SIZE> _formatted_message;
 };
 
 class Logger
@@ -188,8 +186,7 @@ public:
   }
 
 private:
-  static constexpr size_t QUEUE_CAPACITY = global::logger::QUEUE_CAPACITY;
-  using LogQueue = global::SuperQueue<LogMessage, QUEUE_CAPACITY>;
+  using LogQueue = global::SuperQueue<LogMessage, global::logger::QUEUE_CAPACITY>;
 
   mutable LogQueue _log_queue;
   std::jthread _worker_thread;

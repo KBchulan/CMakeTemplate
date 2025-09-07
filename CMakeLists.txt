@@ -156,23 +156,21 @@ if(ENABLE_CPPCHECK)
     set(CPPCHECK_COMMAND ${CPPCHECK}
       --enable=all
       --check-level=exhaustive
-      --suppress=missingIncludeSystem
       --inconclusive
       --std=c++23
       --inline-suppr
       --force
-      --verbose
+      --quiet
       --checkers-report=${CMAKE_BINARY_DIR}/cppcheck-checkers.txt
-      --output-file=${CMAKE_BINARY_DIR}/cppcheck-report.txt
       --suppress='*:*/_deps/*'
       --suppress='*:*/build/_deps/*'
-      --suppress='unusedFunction'
-      --suppress='missingInclude'
+      --suppress=missingInclude
+      --suppress=missingIncludeSystem
       --project=${CMAKE_BINARY_DIR}/compile_commands.json
     )
     add_custom_target(
       cppcheck
-      COMMAND ${CPPCHECK_COMMAND}
+      COMMAND ${CPPCHECK_COMMAND} 2>&1 | tee ${CMAKE_BINARY_DIR}/cppcheck-report.txt
       COMMENT "Running cppcheck"
     )
   else()
