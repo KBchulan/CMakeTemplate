@@ -35,11 +35,18 @@ protected:
 // 测试1: UUID基本生成
 TEST_F(IdTest, UuidBasicGeneration)
 {
-  EXPECT_NO_THROW(uuidGenerator.generateUuid());
-  EXPECT_NO_THROW(uuidGenerator.generateShortUuid());
+  EXPECT_NO_THROW(tools::UuidGenerator::generateUuid());
+  EXPECT_NO_THROW(tools::UuidGenerator::generateShortUuid());
 
-  auto uuid = uuidGenerator.generateUuid();
-  auto shortUuid = uuidGenerator.generateShortUuid();
+  auto uuid_result = tools::UuidGenerator::generateUuid();
+  auto short_uuid_result = tools::UuidGenerator::generateShortUuid();
+
+  // 检查生成是否成功
+  ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败";
+  ASSERT_TRUE(short_uuid_result.has_value()) << "短UUID生成失败";
+
+  const auto& uuid = *uuid_result;
+  const auto& shortUuid = *short_uuid_result;
 
   // UUID长度检查
   EXPECT_EQ(uuid.length(), 36);
@@ -64,8 +71,14 @@ TEST_F(IdTest, UuidUniqueness)
 
   for (int i = 0; i < count; ++i)
   {
-    auto uuid = uuidGenerator.generateUuid();
-    auto shortUuid = uuidGenerator.generateShortUuid();
+    auto uuid_result = tools::UuidGenerator::generateUuid();
+    auto short_uuid_result = tools::UuidGenerator::generateShortUuid();
+
+    ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败 at " << i;
+    ASSERT_TRUE(short_uuid_result.has_value()) << "短UUID生成失败 at " << i;
+
+    const auto& uuid = *uuid_result;
+    const auto& shortUuid = *short_uuid_result;
 
     // 检查唯一性
     EXPECT_TRUE(uuid_set.insert(uuid).second) << "UUID重复: " << uuid;
@@ -79,11 +92,17 @@ TEST_F(IdTest, UuidUniqueness)
 // 测试3: 雪花ID基本生成
 TEST_F(IdTest, SnowflakeBasicGeneration)
 {
-  EXPECT_NO_THROW(snowflakeGenerator.generateId());
-  EXPECT_NO_THROW(snowflakeGenerator.generateIdString());
+  EXPECT_NO_THROW(tools::SnowflakeIdGenerator::generateId());
+  EXPECT_NO_THROW(tools::SnowflakeIdGenerator::generateIdString());
 
-  auto sid = snowflakeGenerator.generateId();
-  auto idStr = snowflakeGenerator.generateIdString();
+  auto sid_result = tools::SnowflakeIdGenerator::generateId();
+  auto id_str_result = tools::SnowflakeIdGenerator::generateIdString();
+
+  ASSERT_TRUE(sid_result.has_value()) << "雪花ID生成失败";
+  ASSERT_TRUE(id_str_result.has_value()) << "雪花ID字符串生成失败";
+
+  auto sid = *sid_result;
+  const auto& idStr = *id_str_result;
 
   EXPECT_GT(sid, 0);
   EXPECT_FALSE(idStr.empty());
@@ -97,7 +116,10 @@ TEST_F(IdTest, SnowflakeUniqueness)
 
   for (int i = 0; i < count; ++i)
   {
-    auto sid = snowflakeGenerator.generateId();
+    auto sid_result = tools::SnowflakeIdGenerator::generateId();
+    ASSERT_TRUE(sid_result.has_value()) << "雪花ID生成失败 at " << i;
+
+    auto sid = *sid_result;
     EXPECT_TRUE(id_set.insert(sid).second) << "雪花ID重复: " << sid;
   }
 
@@ -112,7 +134,10 @@ TEST_F(IdTest, SnowflakeMonotonic)
 
   for (int i = 0; i < count; ++i)
   {
-    auto sid = snowflakeGenerator.generateId();
+    auto sid_result = tools::SnowflakeIdGenerator::generateId();
+    ASSERT_TRUE(sid_result.has_value()) << "雪花ID生成失败 at " << i;
+
+    auto sid = *sid_result;
     EXPECT_GT(sid, prev_id) << "雪花ID不是递增的: " << prev_id << " >= " << sid;
     prev_id = sid;
   }
@@ -121,7 +146,10 @@ TEST_F(IdTest, SnowflakeMonotonic)
 // 测试6: UUID版本检查
 TEST_F(IdTest, UuidVersionCheck)
 {
-  auto uuid = uuidGenerator.generateUuid();
+  auto uuid_result = tools::UuidGenerator::generateUuid();
+  ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败";
+
+  const auto& uuid = *uuid_result;
 
   EXPECT_EQ(uuid[14], '4');
 
@@ -133,8 +161,14 @@ TEST_F(IdTest, UuidVersionCheck)
 TEST_F(IdTest, SpecialCharacters)
 {
   // UUID只应包含十六进制字符和连字符
-  auto uuid = uuidGenerator.generateUuid();
-  auto shortUuid = uuidGenerator.generateShortUuid();
+  auto uuid_result = tools::UuidGenerator::generateUuid();
+  auto short_uuid_result = tools::UuidGenerator::generateShortUuid();
+
+  ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败";
+  ASSERT_TRUE(short_uuid_result.has_value()) << "短UUID生成失败";
+
+  auto uuid = *uuid_result;
+  auto shortUuid = *short_uuid_result;
 
   for (char cha : uuid)
   {
@@ -162,26 +196,33 @@ TEST_F(IdTest, MultithreadSafety)
   std::unordered_set<std::string> uuid_set;
   std::set<std::uint64_t> snowflake_set;
 
+  auto generateIds = [&](int count) -> void
+  {
+    for (int i = 0; i < count; ++i)
+    {
+      auto uuid_result = tools::UuidGenerator::generateUuid();
+      if (uuid_result.has_value())
+      {
+        std::lock_guard<std::mutex> lock(uuid_mutex);
+        EXPECT_TRUE(uuid_set.insert(*uuid_result).second) << "多线程UUID重复: " << *uuid_result;
+      }
+
+      auto snowflake_result = tools::SnowflakeIdGenerator::generateId();
+      if (snowflake_result.has_value())
+      {
+        std::lock_guard<std::mutex> lock(snowflake_mutex);
+        EXPECT_TRUE(snowflake_set.insert(*snowflake_result).second) << "多线程雪花ID重复: " << *snowflake_result;
+      }
+    }
+  };
+
   // 创建多个线程同时生成ID
   for (int thr = 0; thr < num_threads; ++thr)
   {
     threads.emplace_back(
-        [&completed_threads, &uuid_mutex, &snowflake_mutex, &uuid_set, &snowflake_set]() -> void
+        [&generateIds, &completed_threads]() -> void
         {
-          for (int i = 0; i < ids_per_thread; ++i)
-          {
-            auto uuid = uuidGenerator.generateUuid();
-            {
-              std::lock_guard<std::mutex> lock(uuid_mutex);
-              EXPECT_TRUE(uuid_set.insert(uuid).second) << "多线程UUID重复: " << uuid;
-            }
-
-            auto snowflake = snowflakeGenerator.generateId();
-            {
-              std::lock_guard<std::mutex> lock(snowflake_mutex);
-              EXPECT_TRUE(snowflake_set.insert(snowflake).second) << "多线程雪花ID重复: " << snowflake;
-            }
-          }
+          generateIds(ids_per_thread);
           completed_threads.fetch_add(1);
         });
   }
@@ -196,16 +237,51 @@ TEST_F(IdTest, MultithreadSafety)
   EXPECT_EQ(snowflake_set.size(), num_threads * ids_per_thread);
 }
 
-// 测试9: 单例行为测试
-TEST_F(IdTest, SingletonBehavior)
+// 测试9: thread_local状态独立性测试
+TEST_F(IdTest, ThreadLocalIndependence)
 {
-  auto& uuid1 = tools::UuidGenerator::getInstance();
-  auto& uuid2 = tools::UuidGenerator::getInstance();
-  auto& snowflake1 = tools::SnowflakeIdGenerator::getInstance();
-  auto& snowflake2 = tools::SnowflakeIdGenerator::getInstance();
+  std::vector<std::thread> threads;
+  std::atomic<int> completed{0};
 
-  EXPECT_EQ(&uuid1, &uuid2);
-  EXPECT_EQ(&snowflake1, &snowflake2);
+  auto testSingleIteration = []() -> void
+  {
+    auto uuid_result = tools::UuidGenerator::generateUuid();
+    auto snowflake_result = tools::SnowflakeIdGenerator::generateId();
+
+    EXPECT_TRUE(uuid_result.has_value()) << "UUID生成失败";
+    EXPECT_TRUE(snowflake_result.has_value()) << "雪花ID生成失败";
+
+    if (uuid_result.has_value())
+    {
+      EXPECT_FALSE(uuid_result->empty());
+    }
+    if (snowflake_result.has_value())
+    {
+      EXPECT_GT(*snowflake_result, 0);
+    }
+  };
+
+  auto testThreadLocalState = [&completed, &testSingleIteration]() -> void
+  {
+    for (int j = 0; j < 10; ++j)
+    {
+      testSingleIteration();
+    }
+    completed.fetch_add(1);
+  };
+
+  threads.reserve(2);
+  for (int i = 0; i < 2; ++i)
+  {
+    threads.emplace_back(testThreadLocalState);
+  }
+
+  for (auto& thr : threads)
+  {
+    thr.join();
+  }
+
+  EXPECT_EQ(completed.load(), 2);
 }
 
 // 测试10: 性能基准测试
@@ -219,8 +295,9 @@ TEST_F(IdTest, PerformanceBenchmark)
   // 雪花ID
   for (int i = 0; i < burst_count; ++i)
   {
-    auto sid = snowflakeGenerator.generateId();
-    EXPECT_GT(sid, 0);
+    auto sid_result = tools::SnowflakeIdGenerator::generateId();
+    ASSERT_TRUE(sid_result.has_value()) << "雪花ID生成失败 at " << i;
+    EXPECT_GT(*sid_result, 0);
   }
 
   auto mid = std::chrono::high_resolution_clock::now();
@@ -228,8 +305,9 @@ TEST_F(IdTest, PerformanceBenchmark)
   // 生成UUID
   for (int i = 0; i < uuid_count; ++i)
   {
-    auto uuid = uuidGenerator.generateUuid();
-    EXPECT_EQ(uuid.length(), 36);
+    auto uuid_result = tools::UuidGenerator::generateUuid();
+    ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败 at " << i;
+    EXPECT_EQ(uuid_result->length(), 36);
   }
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -239,11 +317,11 @@ TEST_F(IdTest, PerformanceBenchmark)
 
   // 性能检查 - 雪花ID应该很快
   double snowflake_rate = static_cast<double>(burst_count) / (static_cast<double>(snowflake_time.count()) / 1000000.0);
-  EXPECT_GT(snowflake_rate, 50000.0) << "雪花ID生成速度过慢: " << snowflake_rate << " ids/sec";
+  EXPECT_GT(snowflake_rate, 3000000.0) << "雪花ID生成速度过慢: " << snowflake_rate << " ids/sec";
 
   // 性能检查 - UUID虽然慢但不能太慢
   double uuid_rate = static_cast<double>(uuid_count) / (static_cast<double>(uuid_time.count()) / 1000000.0);
-  EXPECT_GT(uuid_rate, 1000.0) << "UUID生成速度过慢: " << uuid_rate << " ids/sec";
+  EXPECT_GT(uuid_rate, 40000.0) << "UUID生成速度过慢: " << uuid_rate << " ids/sec";
 }
 
 // 测试11: 并发混合生成测试
@@ -273,13 +351,19 @@ TEST_F(IdTest, ConcurrentMixedGeneration)
             // 混合生成UUID和雪花ID
             if (i % 2 == 0)
             {
-              auto uuid = uuidGenerator.generateUuid();
-              local_uuids.insert(uuid);
+              auto uuid_result = tools::UuidGenerator::generateUuid();
+              if (uuid_result.has_value())
+              {
+                local_uuids.insert(*uuid_result);
+              }
             }
             else
             {
-              auto snowflake = snowflakeGenerator.generateId();
-              local_snowflakes.insert(snowflake);
+              auto snowflake_result = tools::SnowflakeIdGenerator::generateId();
+              if (snowflake_result.has_value())
+              {
+                local_snowflakes.insert(*snowflake_result);
+              }
             }
           }
 

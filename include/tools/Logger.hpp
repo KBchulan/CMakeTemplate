@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <global/Global.hpp>
 #include <global/SuperQueue.hpp>
 #include <string>
 #include <thread>
@@ -51,12 +52,12 @@ struct LogMessage
       : _level(lev), _style(sty), _timestamp(std::chrono::system_clock::now())
   {
     auto formatted = fmt::vformat(format, fmt::make_format_args(args...));
-    _message_length = std::min(formatted.length(), MAX_MESSAGE_SIZE - 1);
+    _message_length = std::min(formatted.length(), global::logger::MAX_MESSAGE_SIZE - 1);
     std::memcpy(_formatted_message.data(), formatted.c_str(), _message_length);
     _formatted_message[_message_length] = '\0';
   }
 
-  static constexpr size_t MAX_MESSAGE_SIZE = 512;
+  static constexpr size_t MAX_MESSAGE_SIZE = global::logger::MAX_MESSAGE_SIZE;
 
   LogLevel _level;
   fmt::text_style _style;
@@ -182,12 +183,12 @@ public:
   {
     while (!_log_queue.empty())
     {
-      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      std::this_thread::sleep_for(global::logger::FLUSH_INTERVAL);
     }
   }
 
 private:
-  static constexpr size_t QUEUE_CAPACITY = 16384;  // 2^14
+  static constexpr size_t QUEUE_CAPACITY = global::logger::QUEUE_CAPACITY;
   using LogQueue = global::SuperQueue<LogMessage, QUEUE_CAPACITY>;
 
   mutable LogQueue _log_queue;
@@ -264,7 +265,5 @@ private:
 };
 
 }  // namespace tools
-
-#define logger tools::Logger::getInstance()
 
 #endif  // LOGGER_HPP

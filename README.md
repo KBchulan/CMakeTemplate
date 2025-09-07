@@ -68,4 +68,11 @@ ninja # 或者 cmake --build .
 ./scripts/profile.sh
 ```
 
+可以使用已经制作好的脚本进行代码格式化：
+
+```bash
+./scripts/format.sh
+```
+
 最后，本框架还集成了一个 CI 工作流，详细的内容可以自行查阅，对应 CD 流可以根据需要自己完成。
+

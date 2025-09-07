@@ -22,12 +22,14 @@ class LoggerTest : public ::testing::Test
 protected:
   void SetUp() override
   {
+    auto &logger = tools::Logger::getInstance();
     logger.flush();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   void TearDown() override
   {
+    auto &logger = tools::Logger::getInstance();
     logger.flush();
   }
 };
@@ -35,6 +37,7 @@ protected:
 // 测试1: 日志打印
 TEST_F(LoggerTest, BasicLogging)
 {
+  auto &logger = tools::Logger::getInstance();
   EXPECT_NO_THROW(logger.info("测试信息日志: {}", 42));
   EXPECT_NO_THROW(logger.warning("测试警告日志: {}", "warning"));
   EXPECT_NO_THROW(logger.error("测试错误日志: {}", 3.14));
@@ -49,6 +52,7 @@ TEST_F(LoggerTest, BasicLogging)
 // 测试2: 普通打印
 TEST_F(LoggerTest, PrintWithStyle)
 {
+  auto &logger = tools::Logger::getInstance();
   auto style = fmt::fg(fmt::color::cyan);
   EXPECT_NO_THROW(logger.print(style, "样式化输出: {}", "cyan"));
   EXPECT_NO_THROW(logger.print("普通打印: {}", "normal"));
@@ -59,6 +63,7 @@ TEST_F(LoggerTest, PrintWithStyle)
 // 测试3: flush刷新
 TEST_F(LoggerTest, QueueSizeTracking)
 {
+  auto &logger = tools::Logger::getInstance();
   for (int i = 0; i < 50; ++i)
   {
     logger.info("消息 {}", i);
@@ -73,6 +78,7 @@ TEST_F(LoggerTest, QueueSizeTracking)
 // 测试4: 不同符号测试
 TEST_F(LoggerTest, SpecialCharacters)
 {
+  auto &logger = tools::Logger::getInstance();
   EXPECT_NO_THROW(logger.info("中文日志"));
   EXPECT_NO_THROW(logger.warning("特殊符号: !@#$%^&*()"));
   EXPECT_NO_THROW(logger.error("换行\n制表\t"));
@@ -83,6 +89,7 @@ TEST_F(LoggerTest, SpecialCharacters)
 // 测试5: 长信息处理
 TEST_F(LoggerTest, LargeMessageTruncation)
 {
+  auto &logger = tools::Logger::getInstance();
   std::string long_message(1000, 'A');
 
   // 内部会截断到MAX_MESSAGE_SIZE-1
@@ -101,6 +108,7 @@ TEST_F(LoggerTest, LargeMessageTruncation)
 // 测试6: 各种类型数据输出
 TEST_F(LoggerTest, VariousFormatTypes)
 {
+  auto &logger = tools::Logger::getInstance();
   EXPECT_NO_THROW(logger.info("整数: {}", 42));
   EXPECT_NO_THROW(logger.info("浮点: {:.2f}", 3.14159));
   EXPECT_NO_THROW(logger.info("字符串: {}", "hello"));
@@ -113,6 +121,7 @@ TEST_F(LoggerTest, VariousFormatTypes)
 // 测试7: 多线程安全测试
 TEST_F(LoggerTest, MultithreadSafety)
 {
+  auto &logger = tools::Logger::getInstance();
   const int num_threads = 4;
   const int messages_per_thread = 10;
   std::atomic<int> completed_threads{0};
@@ -124,7 +133,7 @@ TEST_F(LoggerTest, MultithreadSafety)
   for (int thr = 0; thr < num_threads; ++thr)
   {
     threads.emplace_back(
-        [thr, &completed_threads]() -> void
+        [thr, &logger, &completed_threads]() -> void
         {
           for (int i = 0; i < messages_per_thread; ++i)
           {
@@ -134,7 +143,7 @@ TEST_F(LoggerTest, MultithreadSafety)
         });
   }
 
-  for (auto& thread : threads)
+  for (auto &thread : threads)
   {
     thread.join();
   }
@@ -148,6 +157,7 @@ TEST_F(LoggerTest, MultithreadSafety)
 // 测试8: 测试不同日志类型
 TEST_F(LoggerTest, ConcurrentMixedLevels)
 {
+  auto &logger = tools::Logger::getInstance();
   const int num_threads = 3;
   std::atomic<int> completed{0};
 
@@ -155,7 +165,7 @@ TEST_F(LoggerTest, ConcurrentMixedLevels)
 
   // 每个线程使用不同的日志级别
   threads.emplace_back(
-      [&completed]() -> void
+      [&completed, &logger]() -> void
       {
         for (int i = 0; i < 5; ++i)
         {
@@ -165,7 +175,7 @@ TEST_F(LoggerTest, ConcurrentMixedLevels)
       });
 
   threads.emplace_back(
-      [&completed]() -> void
+      [&completed, &logger]() -> void
       {
         for (int i = 0; i < 5; ++i)
         {
@@ -175,7 +185,7 @@ TEST_F(LoggerTest, ConcurrentMixedLevels)
       });
 
   threads.emplace_back(
-      [&completed]() -> void
+      [&completed, &logger]() -> void
       {
         for (int i = 0; i < 5; ++i)
         {
@@ -184,7 +194,7 @@ TEST_F(LoggerTest, ConcurrentMixedLevels)
         completed.fetch_add(1);
       });
 
-  for (auto& thr : threads)
+  for (auto &thr : threads)
   {
     thr.join();
   }
@@ -196,8 +206,8 @@ TEST_F(LoggerTest, ConcurrentMixedLevels)
 // 测试9: 单例
 TEST_F(LoggerTest, SingletonBehavior)
 {
-  auto& logger1 = tools::Logger::getInstance();
-  auto& logger2 = tools::Logger::getInstance();
+  auto &logger1 = tools::Logger::getInstance();
+  auto &logger2 = tools::Logger::getInstance();
 
   EXPECT_EQ(&logger1, &logger2);
 }
@@ -205,6 +215,7 @@ TEST_F(LoggerTest, SingletonBehavior)
 // 测试10: 稳定性测试
 TEST_F(LoggerTest, QueueOperationsStability)
 {
+  auto &logger = tools::Logger::getInstance();
   for (int cycle = 0; cycle < 3; ++cycle)
   {
     for (int i = 0; i < 20; ++i)
@@ -222,6 +233,7 @@ TEST_F(LoggerTest, QueueOperationsStability)
 // 测试11: 极限性能测试
 TEST_F(LoggerTest, ExtremeThroughputTest)
 {
+  auto &logger = tools::Logger::getInstance();
   const int message_count = 1000000;
   const int num_threads = 8;
   const int messages_per_thread = message_count / num_threads;
@@ -236,7 +248,7 @@ TEST_F(LoggerTest, ExtremeThroughputTest)
   for (int thr = 0; thr < num_threads; ++thr)
   {
     threads.emplace_back(
-        [thr, &completed_threads]()
+        [thr, &completed_threads, &logger]()
         {
           int start_idx = thr * messages_per_thread;
           for (int i = 0; i < messages_per_thread; ++i)
@@ -248,7 +260,7 @@ TEST_F(LoggerTest, ExtremeThroughputTest)
         });
   }
 
-  for (auto& thread : threads)
+  for (auto &thread : threads)
   {
     thread.join();
   }
