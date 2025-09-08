@@ -284,47 +284,7 @@ TEST_F(IdTest, ThreadLocalIndependence)
   EXPECT_EQ(completed.load(), 2);
 }
 
-// 测试10: 性能基准测试
-TEST_F(IdTest, PerformanceBenchmark)
-{
-  const int burst_count = 10000;
-  const int uuid_count = burst_count / 10;
-
-  auto start = std::chrono::high_resolution_clock::now();
-
-  // 雪花ID
-  for (int i = 0; i < burst_count; ++i)
-  {
-    auto sid_result = tools::SnowflakeIdGenerator::generateId();
-    ASSERT_TRUE(sid_result.has_value()) << "雪花ID生成失败 at " << i;
-    EXPECT_GT(*sid_result, 0);
-  }
-
-  auto mid = std::chrono::high_resolution_clock::now();
-
-  // 生成UUID
-  for (int i = 0; i < uuid_count; ++i)
-  {
-    auto uuid_result = tools::UuidGenerator::generateUuid();
-    ASSERT_TRUE(uuid_result.has_value()) << "UUID生成失败 at " << i;
-    EXPECT_EQ(uuid_result->length(), 36);
-  }
-
-  auto end = std::chrono::high_resolution_clock::now();
-
-  auto snowflake_time = std::chrono::duration_cast<std::chrono::microseconds>(mid - start);
-  auto uuid_time = std::chrono::duration_cast<std::chrono::microseconds>(end - mid);
-
-  // 性能检查 - 雪花ID应该很快
-  double snowflake_rate = static_cast<double>(burst_count) / (static_cast<double>(snowflake_time.count()) / 1000000.0);
-  EXPECT_GT(snowflake_rate, 3000000.0) << "雪花ID生成速度过慢: " << snowflake_rate << " ids/sec";
-
-  // 性能检查 - UUID虽然慢但不能太慢
-  double uuid_rate = static_cast<double>(uuid_count) / (static_cast<double>(uuid_time.count()) / 1000000.0);
-  EXPECT_GT(uuid_rate, 40000.0) << "UUID生成速度过慢: " << uuid_rate << " ids/sec";
-}
-
-// 测试11: 并发混合生成测试
+// 测试10: 并发混合生成测试
 TEST_F(IdTest, ConcurrentMixedGeneration)
 {
   const int num_threads = 4;

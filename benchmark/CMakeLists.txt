@@ -32,4 +32,8 @@ endfunction()
 
 ######## 添加基准测试 ########
 
-add_benchmark(bench_example example/bench_example.cc fmt::fmt)
+# Logger基准测试
+add_benchmark(bench_logger tools/bench_logger.cc fmt::fmt)
+
+# Id生成的基准测试
+add_benchmark(bench_id tools/bench_id.cc)

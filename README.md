@@ -2,11 +2,13 @@
 
 ### 环境要求
 
-常规环境不介绍了，需要安装 gtest 和 cppcheck。
+常规环境不介绍了，其余需要安装 gtest、 cppcheck 和 benchmark。
 
 ```bash
-sudo pacman -S gtest cppcheck
+sudo pacman -S gtest cppcheck benchmark
 ```
+
+如果真不想安装也 ok，cmake中做了配置，会自动克隆用于当前构建，那就比较慢了，且每次都需要等，建议配一下环境。
 
 ### 基本使用
 
@@ -56,7 +58,13 @@ cmake .. -DBUILD_BENCHMARK=ON
 ninja # 或者 cmake --build .
 ```
 
-> 此模块不进入ci，可以本地进行测试
+**注意**:  logger 的基准测试不可避免的输出内容，会干扰到我们正常的 BM 输出，可以简单的选择 grep 来过滤:
+
+```bash
+./build/bin/bench_logger | grep "BM_"
+```
+
+> 此模块不进入ci检查，只检查编译，可以本地进行测试
 
 #### 静态分析代码
 
@@ -97,4 +105,3 @@ ninja # 或者 cmake --build .
 ```
 
 最后，本框架还集成了一个 CI 工作流，详细的内容可以自行查阅，对应 CD 流可以根据需要自己完成。
-

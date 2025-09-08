@@ -12,6 +12,7 @@ SOURCE_DIRS=(
     "$PROJECT_ROOT/src"
     "$PROJECT_ROOT/include"
     "$PROJECT_ROOT/tests"
+    "$PROJECT_ROOT/benchmark"
 )
 
 FILE_PATTERNS=(-name "*.cc" -o -name "*.cpp" -o -name "*.cxx" -o -name "*.h" -o -name "*.hpp" -o -name "*.hxx")
@@ -37,11 +38,11 @@ if [ ${#SOURCE_DIRS[@]} -eq 0 ]; then
 fi
 
 if [ "$CHECK_MODE" = true ]; then
-    echo "正在检查指定的源代码目录格式: src/, include/, tests/"
+    echo "正在检查指定的源代码目录格式: src/, include/, tests/, benchmark/"
     find "${SOURCE_DIRS[@]}" -type f \( "${FILE_PATTERNS[@]}" \) -print0 | xargs -0 clang-format --dry-run -Werror
     echo "格式检查完成"
 else
-    echo "正在格式化指定的源代码目录: src/, include/, tests/"
+    echo "正在格式化指定的源代码目录: src/, include/, tests/, benchmark/"
     find "${SOURCE_DIRS[@]}" -type f \( "${FILE_PATTERNS[@]}" \) -print0 | xargs -0 clang-format -i
     echo "格式化完成"
 fi
