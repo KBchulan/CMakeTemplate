@@ -29,7 +29,7 @@ jobs:
         shell: bash
 
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON -DENABLE_CPPCHECK=ON
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DENABLE_CPPCHECK=ON -DBUILD_BENCHMARK=ON
 
       - name: Build
         run: cmake --build build --config Release
