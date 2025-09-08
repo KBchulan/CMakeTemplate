@@ -23,6 +23,9 @@ option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" ON)
 # 测试选项
 option(BUILD_TESTING "Build tests" OFF)
 
+# 基准测试
+option(BUILD_BENCHMARK "Build benchmark" OFF)
+
 # cppcheck
 option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
 
@@ -138,6 +141,18 @@ if(NOT GTest_FOUND)
   FetchContent_MakeAvailable(googletest)
 endif()
 
+# benchmark
+find_package(benchmark QUIET)
+if(NOT benchmark_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(
+    benchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG v1.9.4
+  )
+  FetchContent_MakeAvailable(benchmark)
+endif()
+
 # 主程序入口
 add_subdirectory(src)
 
@@ -147,6 +162,11 @@ if(BUILD_TESTING)
   enable_testing()
   include(CTestConfig.cmake)
   add_subdirectory(tests)
+endif()
+
+# 基准测试入口
+if(BUILD_BENCHMARK)
+  add_subdirectory(benchmark)
 endif()
 
 # cppcheck
