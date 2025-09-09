@@ -51,9 +51,9 @@ struct LogMessage
   LogMessage(LogLevel lev, const fmt::text_style& sty, const std::string& format, Args&&... args)
       : _level(lev), _style(sty), _timestamp(std::chrono::system_clock::now())
   {
-    auto formatted = fmt::vformat(format, fmt::make_format_args(args...));
-    _message_length = std::min(formatted.length(), global::logger::MAX_MESSAGE_SIZE - 1);
-    std::memcpy(_formatted_message.data(), formatted.c_str(), _message_length);
+    auto result = fmt::vformat_to_n(_formatted_message.data(), global::logger::MAX_MESSAGE_SIZE - 1, format,
+                                    fmt::make_format_args(args...));
+    _message_length = std::min(result.size, global::logger::MAX_MESSAGE_SIZE - 1);
     _formatted_message[_message_length] = '\0';
   }
 
@@ -89,7 +89,7 @@ public:
 
   // 普通打印
   template <typename... Args>
-  [[maybe_unused]] void print(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void print(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::INFO, fmt::text_style{}, format, std::forward<Args>(args)...))
     {
@@ -100,7 +100,7 @@ public:
 
   // 指定样式进行打印
   template <typename... Args>
-  [[maybe_unused]] void print(const fmt::text_style& style, const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void print(const fmt::text_style& style, const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::INFO, style, format, std::forward<Args>(args)...))
     {
@@ -111,7 +111,7 @@ public:
 
   // 各个类型的日志
   template <typename... Args>
-  [[maybe_unused]] void info(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void info(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::INFO, fmt::fg(fmt::color::green), format, std::forward<Args>(args)...))
     {
@@ -121,7 +121,7 @@ public:
   }
 
   template <typename... Args>
-  [[maybe_unused]] void warning(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void warning(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::WARNING, fmt::fg(fmt::color::yellow), format, std::forward<Args>(args)...))
     {
@@ -131,7 +131,7 @@ public:
   }
 
   template <typename... Args>
-  [[maybe_unused]] void error(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void error(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::ERROR, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
     {
@@ -141,7 +141,7 @@ public:
   }
 
   template <typename... Args>
-  [[maybe_unused]] void trace(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void trace(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::TRACE, fmt::fg(fmt::color::gray), format, std::forward<Args>(args)...))
     {
@@ -151,7 +151,7 @@ public:
   }
 
   template <typename... Args>
-  [[maybe_unused]] void debug(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void debug(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::DEBUG, fmt::fg(fmt::color::blue), format, std::forward<Args>(args)...))
     {
@@ -161,7 +161,7 @@ public:
   }
 
   template <typename... Args>
-  [[maybe_unused]] void fatal(const std::string& format, Args&&... args) const noexcept
+  [[maybe_unused]] void fatal(const std::string& format, Args&&... args) const
   {
     if (_log_queue.emplace(LogLevel::FATAL, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
     {
@@ -171,13 +171,13 @@ public:
   }
 
   // 获取队列长度
-  [[nodiscard, maybe_unused]] size_t queueSize() const noexcept
+  [[nodiscard, maybe_unused]] size_t queueSize() const
   {
     return _pending_count.load(std::memory_order_acquire);
   }
 
   // 强制刷新，等待队列清空
-  [[maybe_unused]] void flush() const noexcept
+  [[maybe_unused]] void flush() const
   {
     while (!_log_queue.empty())
     {

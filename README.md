@@ -48,7 +48,7 @@ ctest # 或者 ctest --output-on-failure
 
 #### 基准测试
 
-同时也可以选择指定benchmark, 常规编译即可，基准测试文件就会生成到 build/bin 下：
+同时也可以选择指定benchmark，常规编译即可，基准测试文件就会生成到 build/bin 下：
 
 ```bash
 mkdir build && cd build

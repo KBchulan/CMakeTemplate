@@ -14,7 +14,10 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <new>
+#include <type_traits>
 #include <utility>
 
 namespace global
@@ -26,13 +29,22 @@ class SuperQueue
 private:
   // 确保容量是2的幂，便于位运算优化
   static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be power of 2");
+  static_assert(std::is_move_constructible_v<T> || std::is_copy_constructible_v<T>,
+                "T must can be move or copy construction");
+  static_assert(std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>,
+                "the copy or move shouldn't throw error");
 
   static constexpr size_t _cache_line_size = 64;
 
   struct alignas(_cache_line_size) Slot
   {
     std::atomic<size_t> _sequence{0};
-    T _data;
+    alignas(T) std::array<std::byte, sizeof(T)> _storage;
+
+    T *data() noexcept
+    {
+      return std::launder(reinterpret_cast<T *>(_storage.data()));
+    }
   };
 
   alignas(_cache_line_size) std::atomic<size_t> _enqueue_pos{0};
@@ -59,9 +71,9 @@ public:
     while (front != back)
     {
       size_t pos = front & (Capacity - 1);  // 位运算取模
-      if (_buffer[pos]._sequence.load(std::memory_order_relaxed) == front + 1)
+      if (_buffer[pos]._sequence.load(std::memory_order_acquire) == front + 1)
       {
-        std::destroy_at(&_buffer[pos]._data);
+        std::destroy_at(_buffer[pos].data());
       }
       ++front;
     }
@@ -100,7 +112,7 @@ public:
     }
 
     // 在占据的槽中构造元素
-    std::construct_at(&slot->_data, std::forward<Args>(args)...);
+    std::construct_at(slot->data(), std::forward<Args>(args)...);
 
     // 更新序列号，使数据对消费者可见
     slot->_sequence.store(pos + 1, std::memory_order_release);
@@ -140,8 +152,8 @@ public:
     }
 
     // 读取数据
-    result = std::move(slot->_data);
-    std::destroy_at(&slot->_data);
+    result = std::move(*slot->data());
+    std::destroy_at(slot->data());
 
     // 更新序列号，使位置对生产者可用
     slot->_sequence.store(pos + Capacity, std::memory_order_release);

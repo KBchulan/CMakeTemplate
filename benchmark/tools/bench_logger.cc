@@ -20,7 +20,7 @@ using namespace tools;
 // 测试1: 基础日志输出性能测试
 static void BM_BasicLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
 
   for (auto ___ : state)
   {
@@ -34,7 +34,7 @@ BENCHMARK(BM_BasicLogging);
 // 测试2: 不同日志级别性能测试
 static void BM_LoggingLevels(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto level = static_cast<int>(state.range(0));
 
   for (auto ___ : state)
@@ -69,7 +69,7 @@ BENCHMARK(BM_LoggingLevels)->DenseRange(0, 5);
 // 测试3: 格式化字符串性能测试
 static void BM_FormattedLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto format_complexity = static_cast<int>(state.range(0));
 
   for (auto ___ : state)
@@ -96,7 +96,7 @@ BENCHMARK(BM_FormattedLogging)->DenseRange(0, 2);
 // 测试4: 多线程日志性能测试
 static void BM_MultiThreadLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto num_threads = static_cast<std::size_t>(state.range(0));
 
   for (auto ___ : state)
@@ -130,7 +130,7 @@ BENCHMARK(BM_MultiThreadLogging)->Range(1, 8);
 // 测试5: 队列容量压力测试
 static void BM_QueuePressureTest(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto message_count = static_cast<std::size_t>(state.range(0));
 
   for (auto ___ : state)
@@ -152,7 +152,7 @@ BENCHMARK(BM_QueuePressureTest)->Range(1000, 100000);
 // 测试6: 带样式的日志性能测试
 static void BM_StyledLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
 
   for (auto ___ : state)
   {
@@ -167,7 +167,7 @@ BENCHMARK(BM_StyledLogging);
 // 测试7: 批量日志处理性能测试
 static void BM_BatchLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto batch_size = static_cast<std::size_t>(state.range(0));
 
   for (auto ___ : state)
@@ -192,7 +192,7 @@ BENCHMARK(BM_BatchLogging)->Range(10, 10000);
 // 测试8: 长字符串日志性能测试
 static void BM_LongStringLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto string_length = static_cast<std::size_t>(state.range(0));
 
   std::string long_string(string_length, 'A');
@@ -210,7 +210,7 @@ BENCHMARK(BM_LongStringLogging)->Range(100, 10000);
 // 测试9: 混合日志级别多线程测试
 static void BM_MixedLevelMultiThreadLogging(benchmark::State& state)
 {
-  auto& logger = Logger::getInstance();
+  const auto& logger = Logger::getInstance();
   const auto num_threads = static_cast<std::size_t>(state.range(0));
 
   for (auto ___ : state)
