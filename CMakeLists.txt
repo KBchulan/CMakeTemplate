@@ -272,11 +272,3 @@ set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(CPACK_GENERATOR "TGZ")
 set(CPACK_SOURCE_GENERATOR "TGZ")
 
-# 确保编译命令文件被复制到项目根目录
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${CMAKE_BINARY_DIR}/compile_commands.json
-    ${CMAKE_SOURCE_DIR}/compile_commands.json
-  )
-endif()
