@@ -215,8 +215,7 @@ public:
     }
 
     // 组装雪花ID: 1位符号位(0) + 41位时间戳 + 10位worker_id + 12位序列号 = 64位
-    return (relative_timestamp << 22) |
-           (static_cast<std::uint64_t>(thread_state.worker_id) << 12) |
+    return (relative_timestamp << 22) | (static_cast<std::uint64_t>(thread_state.worker_id) << 12) |
            thread_state.sequence;
   }
 
