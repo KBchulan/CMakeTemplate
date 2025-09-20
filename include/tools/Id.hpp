@@ -195,7 +195,7 @@ public:
 
     if (thread_state.last_timestamp == timestamp)
     {
-      thread_state.sequence = (thread_state.sequence + 1) & global::snowflake::SEQUENCE_MASK;
+      thread_state.sequence = (thread_state.sequence + 1) & 0xFFF;
       if (thread_state.sequence == 0)
       {
         timestamp = _waitNextMillis(thread_state.last_timestamp);
@@ -209,14 +209,14 @@ public:
     thread_state.last_timestamp = timestamp;
 
     auto relative_timestamp = timestamp - global::snowflake::EPOCH;
-    if (relative_timestamp >= (1ULL << global::snowflake::TIMESTAMP_MAX_BITS))
+    if (relative_timestamp >= (1ULL << 41ULL))
     {
       return std::unexpected(SnowflakeError::TimestampOverflow);
     }
 
     // 组装雪花ID: 1位符号位(0) + 41位时间戳 + 10位worker_id + 12位序列号 = 64位
-    return (relative_timestamp << global::snowflake::TIMESTAMP_SHIFT) |
-           (static_cast<std::uint64_t>(thread_state.worker_id) << global::snowflake::WORKER_ID_SHIFT) |
+    return (relative_timestamp << 22) |
+           (static_cast<std::uint64_t>(thread_state.worker_id) << 12) |
            thread_state.sequence;
   }
 
@@ -246,7 +246,7 @@ private:
   {
     ThreadState state;
 
-    state.worker_id = global_worker_counter.fetch_add(1, std::memory_order_relaxed) & global::snowflake::WORKER_ID_MASK;
+    state.worker_id = global_worker_counter.fetch_add(1, std::memory_order_relaxed) & 0x3FF;
 
     return state;
   }

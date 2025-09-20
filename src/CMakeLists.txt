@@ -1,6 +1,10 @@
 # 各个子模块
-add_subdirectory(core)
-add_subdirectory(utils)
+if(USE_CORE)
+  add_subdirectory(core)
+endif()
+if(USE_UTILS)
+  add_subdirectory(utils)
+endif()
 
 # 主程序
 add_executable(${PROJECT_NAME} main.cc)
@@ -12,18 +16,6 @@ set_target_properties(
   DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
 )
 
-# AddressSanitizer
-if(ENABLE_ASAN)
-  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-  target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=address)
-endif()
-
-# UndefinedBehaviorSanitizer
-if(ENABLE_UBSAN)
-  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=undefined)
-  target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=undefined)
-endif()
-
 # 头文件
 target_include_directories(
   ${PROJECT_NAME} PRIVATE
@@ -31,23 +23,21 @@ target_include_directories(
   $<INSTALL_INTERFACE:include>
 )
 
-# core库
-if(USE_CORE)
-  set_warning_flags(core)
-  target_link_libraries(${PROJECT_NAME} PRIVATE core)
-endif()
-
-# utils库
-if(USE_UTILS)
-  set_warning_flags(utils)
-  target_link_libraries(${PROJECT_NAME} PRIVATE utils)
-endif()
-
 # 第三方库
 target_link_libraries(
   ${PROJECT_NAME} PRIVATE
   fmt::fmt
 )
+
+# core库
+if(USE_CORE)
+  target_link_libraries(${PROJECT_NAME} PRIVATE core)
+endif()
+
+# utils库
+if(USE_UTILS)
+  target_link_libraries(${PROJECT_NAME} PRIVATE utils)
+endif()
 
 # 安装可执行文件
 install(

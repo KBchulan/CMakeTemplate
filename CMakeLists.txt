@@ -32,11 +32,20 @@ option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
 # 性能分析
 option(ENABLE_PROFILING "Enable profiling flags for perf" OFF)
 
-# 设置构建类型
+# 构建类型设置
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+  set(CMAKE_BUILD_TYPE "Release")
 endif()
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_compile_options(-O3 -DNDEBUG)
+  message(STATUS "Release build: Using -O3 optimization")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_options(-O0 -g3 -fstack-protector-strong)
+  message(STATUS "Debug build: Using -O0 with debug info")
+endif()
+
+message(STATUS "Current build type: ${CMAKE_BUILD_TYPE}")
 
 # 各种情况的RunTimePath
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
@@ -49,6 +58,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # DEBUG模式给一个'd'后缀
 set(CMAKE_DEBUG_POSTFIX d)
 
+# 配置安装路径
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
+
+# 配置输出目录
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 # 生成配置文件
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/config/Config.hpp.in
@@ -58,6 +75,7 @@ configure_file(
 
 # 系统自省配置(check_cxx_source_compiles)
 include(CheckCXXSourceCompiles)
+include(CheckCXXCompilerFlag)
 
 # 包配置帮助器
 include(CMakePackageConfigHelpers)
@@ -108,14 +126,6 @@ function(set_warning_flags target)
     )
   endif()
 endfunction()
-
-# 配置安装路径
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
-
-# 配置输出目录
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # fmt
 find_package(fmt QUIET)
