@@ -197,6 +197,7 @@ if(ENABLE_CPPCHECK)
       --suppress='*:*/build/*/_deps/*'
       --suppress=missingInclude
       --suppress=missingIncludeSystem
+      --suppress='unusedFunction:*/tests/*'
       --suppress='constParameterCallback:*/benchmark/*'
       --project=${CMAKE_BINARY_DIR}/compile_commands.json
     )
