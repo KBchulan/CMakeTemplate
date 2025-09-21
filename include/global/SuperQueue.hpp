@@ -23,6 +23,50 @@
 namespace global
 {
 
+#if defined(__cpp_lib_hardware_interference_size)
+constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
+#else
+constexpr size_t CACHE_LINE_SIZE = 64;
+#endif
+
+class BackOff
+{
+public:
+  void pause()
+  {
+    for (int i = 0; i < _count; i++)
+    {
+      cpu_pause();
+    }
+    if (_count < 1024)
+    {
+      _count *= 2;
+    }
+  }
+
+  void reset()
+  {
+    _count = 1;
+  }
+
+private:
+  static void cpu_pause()
+  {
+// x86 架构
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_ia32_pause();
+// ARM 架构
+#elif defined(__arm__) || defined(__aarch64__)
+    __asm__ __volatile__("yield");
+// 其他架构
+#else
+    std::this_thread::yield();
+#endif
+  }
+
+  int _count = 1;
+};
+
 template <typename T, size_t Capacity>
 class SuperQueue
 {
@@ -34,9 +78,9 @@ private:
   static_assert(std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>,
                 "the copy or move shouldn't throw error");
 
-  static constexpr size_t _cache_line_size = 64;
+  static constexpr size_t CACHE_LINE_SIZE = 64;
 
-  struct alignas(_cache_line_size) Slot
+  struct alignas(CACHE_LINE_SIZE) Slot
   {
     std::atomic<size_t> _sequence{0};
     alignas(T) std::array<std::byte, sizeof(T)> _storage;
@@ -47,8 +91,8 @@ private:
     }
   };
 
-  alignas(_cache_line_size) std::atomic<size_t> _enqueue_pos{0};
-  alignas(_cache_line_size) std::atomic<size_t> _dequeue_pos{0};
+  alignas(CACHE_LINE_SIZE) std::atomic<size_t> _enqueue_pos{0};
+  alignas(CACHE_LINE_SIZE) std::atomic<size_t> _dequeue_pos{0};
 
   std::array<Slot, Capacity> _buffer;
 
@@ -84,6 +128,7 @@ public:
   {
     Slot *slot;
     size_t pos = _enqueue_pos.load(std::memory_order_relaxed);
+    BackOff backoff;
 
     while (true)
     {
@@ -98,6 +143,7 @@ public:
         {
           break;
         }
+        backoff.pause();
       }
       else if (diff < 0)
       {
@@ -108,6 +154,7 @@ public:
       {
         // 其他生产者已经占用了这个位置
         pos = _enqueue_pos.load(std::memory_order_relaxed);
+        backoff.pause();
       }
     }
 
@@ -124,6 +171,7 @@ public:
   {
     Slot *slot;
     size_t pos = _dequeue_pos.load(std::memory_order_relaxed);
+    BackOff backoff;
 
     while (true)
     {
@@ -138,6 +186,7 @@ public:
         {
           break;
         }
+        backoff.pause();
       }
       else if (diff < 0)
       {
@@ -148,6 +197,7 @@ public:
       {
         // 其他消费者已经占用了这个位置
         pos = _dequeue_pos.load(std::memory_order_relaxed);
+        backoff.pause();
       }
     }
 
