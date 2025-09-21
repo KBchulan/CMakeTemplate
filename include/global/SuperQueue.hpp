@@ -44,7 +44,7 @@ public:
     }
   }
 
-  void reset()
+  [[maybe_unused]] void reset()
   {
     _count = 1;
   }

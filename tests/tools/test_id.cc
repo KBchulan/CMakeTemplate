@@ -22,12 +22,12 @@
 class IdTest : public ::testing::Test
 {
 protected:
-  void SetUp() override
+  [[maybe_unused]] void SetUp() override
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  void TearDown() override
+  [[maybe_unused]] void TearDown() override
   {
   }
 };

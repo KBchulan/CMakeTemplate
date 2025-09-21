@@ -20,14 +20,14 @@
 class LoggerTest : public ::testing::Test
 {
 protected:
-  void SetUp() override
+  [[maybe_unused]] void SetUp() override
   {
     const auto &logger = tools::Logger::getInstance();
     logger.flush();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
-  void TearDown() override
+  [[maybe_unused]] void TearDown() override
   {
     const auto &logger = tools::Logger::getInstance();
     logger.flush();
