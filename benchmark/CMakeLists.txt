@@ -11,6 +11,7 @@ function(add_benchmark BENCHMARK_NAME BENCHMARK_SOURCE)
     ${ARGN}
   )
 
+  target_compile_options(${BENCHMARK_NAME} PRIVATE -Wno-interference-size)
   target_compile_features(${BENCHMARK_NAME} PRIVATE cxx_std_23)
   set_warning_flags(${BENCHMARK_NAME})
 

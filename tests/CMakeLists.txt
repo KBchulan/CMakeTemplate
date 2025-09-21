@@ -11,6 +11,7 @@ function(add_unit_test TEST_NAME TEST_SOURCE)
     ${ARGN}
   )
 
+  target_compile_options(${TEST_NAME} PRIVATE -Wno-interference-size)
   target_compile_features(${TEST_NAME} PRIVATE cxx_std_23)
   set_warning_flags(${TEST_NAME})
 
