@@ -203,7 +203,7 @@ if(ENABLE_COVERAGE)
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
       COMMAND ${LCOV} --directory . --zerocounters
       COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-      COMMAND ${LCOV} --directory . --capture --output-file coverage.info --ignore-errors negative,inconsistent --rc geninfo_unexecuted_blocks=0
+      COMMAND ${LCOV} --directory . --capture --output-file coverage.info --ignore-errors negative,inconsistent,mismatch --rc geninfo_unexecuted_blocks=0
       COMMAND ${LCOV} --remove coverage.info '/usr/*' '*/tests/*' '*/_deps/*' '*/build/*' --output-file coverage.info.cleaned --ignore-errors unused
       COMMAND ${GENHTML} coverage.info.cleaned --output-directory ${CMAKE_BINARY_DIR}/coverage --ignore-errors unmapped
       COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage/index.html"
