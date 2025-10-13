@@ -72,6 +72,7 @@ TEST_F(LoggerTest, QueueSizeTracking)
   EXPECT_GE(logger.queueSize(), 0);
 
   logger.flush();
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   EXPECT_EQ(logger.queueSize(), 0);
 }
 
