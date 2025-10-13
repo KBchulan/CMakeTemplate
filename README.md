@@ -31,7 +31,7 @@ cpack          # 会进行打包，包括 sh、tgz
 
 ### 可选配置
 
-#### 测试选项
+#### 单元测试选项
 
 可以选择启用测试，会测试你在 tests 下写的测试文件：
 
@@ -66,6 +66,27 @@ ninja # 或者 cmake --build .
 
 > 此模块不进入ci检查，只检查编译，可以本地进行测试
 
+#### 代码覆盖率测试
+
+支持使用 `lcov` 和 `genhtml` 生成详细的代码覆盖率报告，会对在 tests 中引用的所有项目文件进行测试，需要先安装依赖:
+
+```bash
+sudo pacman -S lcov
+```
+
+然后启用覆盖率选项并运行测试，注意一定要打开测试选项:
+
+```bash
+# 启用测试和覆盖率
+cmake .. -DBUILD_TESTING=ON -DENABLE_COVERAGE=ON
+ninja
+
+# 运行覆盖率测试
+ninja coverage
+```
+
+覆盖率报告会生成到 `build/coverage/index.html`，可以用浏览器查看。
+
 #### 静态分析代码
 
 也可以选择分析代码，此处我们集成了三种静态分析工具，可以自行选择，这里选择所有的，需要注意的是前两种也就是 AddressSanitizer 和 UndefinedBehaviorSanitizer 只是增加选项，在 ninja 时会自动启用，但是最后一个 cppcheck 需要手动运行：
@@ -74,7 +95,7 @@ ninja # 或者 cmake --build .
 mkdir build && cd build
 
 # 构建生成和构建
-cmake .. -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DENABLE_CPPCHECK=ON
+cmake .. -DENABLE_CPPCHECK=ON
 ninja # 或者 cmake --build .
 
 # 运行 cppcheck

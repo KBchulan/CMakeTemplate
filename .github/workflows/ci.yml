@@ -36,6 +36,38 @@ jobs:
       - name: Static Analysis (cppcheck)
         run: cmake --build build --target cppcheck
 
+  coverage-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov libgtest-dev libfmt-dev
+        shell: bash
+
+      - name: Configure with Coverage
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run Coverage
+        run: cmake --build build --target coverage
+
+      - name: Check Coverage Threshold
+        run: |
+          cd build
+          coverage=$(lcov --summary coverage.info.cleaned 2>&1 | grep "lines" | grep -oP '\d+\.\d+(?=%)')
+          echo "Line coverage: ${coverage}%"
+          if (( $(echo "$coverage < 75.0" | bc -l) )); then
+            echo "Coverage ${coverage}% is below threshold 75%"
+            exit 1
+          else
+            echo "Coverage ${coverage}% meets threshold 75%"
+          fi
+
   format-check:
     runs-on: ubuntu-latest
     steps:

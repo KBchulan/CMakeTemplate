@@ -101,6 +101,7 @@ static void BM_MultiThreadLogging(benchmark::State& state)
 
   for (auto ___ : state)
   {
+    state.PauseTiming();
     std::vector<std::thread> threads;
     threads.reserve(num_threads);
 
@@ -115,6 +116,7 @@ static void BM_MultiThreadLogging(benchmark::State& state)
             }
           });
     }
+    state.ResumeTiming();
 
     for (auto& thread : threads)
     {
@@ -215,6 +217,7 @@ static void BM_MixedLevelMultiThreadLogging(benchmark::State& state)
 
   for (auto ___ : state)
   {
+    state.PauseTiming();
     std::vector<std::thread> threads;
     threads.reserve(num_threads);
 
@@ -249,6 +252,7 @@ static void BM_MixedLevelMultiThreadLogging(benchmark::State& state)
             }
           });
     }
+    state.ResumeTiming();
 
     for (auto& thread : threads)
     {

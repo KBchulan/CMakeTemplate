@@ -26,6 +26,9 @@ option(BUILD_TESTING "Build tests" OFF)
 # 基准测试
 option(BUILD_BENCHMARK "Build benchmark" OFF)
 
+# 代码覆盖率
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+
 # cppcheck
 option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
 
@@ -33,10 +36,18 @@ option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
 option(ENABLE_PROFILING "Enable profiling flags for perf" OFF)
 
 # 构建类型设置
-if(NOT CMAKE_BUILD_TYPE)
+if(ENABLE_COVERAGE)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(FATAL_ERROR "Code coverage only works with GCC or Clang")
+  endif()
+
+  message(STATUS "Code coverage enabled, forcing Debug build with -O0")
+  set(CMAKE_BUILD_TYPE "Debug")
+elseif(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+# 根据构建类型设置编译选项
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_compile_options(-O3 -DNDEBUG)
   message(STATUS "Release build: Using -O3 optimization")
@@ -163,6 +174,12 @@ if(NOT benchmark_FOUND)
   FetchContent_MakeAvailable(benchmark)
 endif()
 
+# 代码覆盖率编译和链接选项
+if(ENABLE_COVERAGE)
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+endif()
+
 # 主程序入口
 add_subdirectory(src)
 
@@ -172,6 +189,28 @@ if(BUILD_TESTING)
   enable_testing()
   include(CTestConfig.cmake)
   add_subdirectory(tests)
+endif()
+
+# 代码覆盖率报告生成目标
+if(ENABLE_COVERAGE)
+  find_program(LCOV lcov)
+  find_program(GENHTML genhtml)
+
+  if(LCOV AND GENHTML)
+    add_custom_target(coverage
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
+      COMMAND ${LCOV} --directory . --zerocounters
+      COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+      COMMAND ${LCOV} --directory . --capture --output-file coverage.info --ignore-errors negative,inconsistent --rc geninfo_unexecuted_blocks=0
+      COMMAND ${LCOV} --remove coverage.info '/usr/*' '*/tests/*' '*/_deps/*' '*/build/*' --output-file coverage.info.cleaned --ignore-errors unused
+      COMMAND ${GENHTML} coverage.info.cleaned --output-directory ${CMAKE_BINARY_DIR}/coverage --ignore-errors unmapped
+      COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage/index.html"
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Generating code coverage report"
+    )
+  else()
+    message(WARNING "lcov or genhtml not found, coverage target will not be available")
+  endif()
 endif()
 
 # 基准测试入口

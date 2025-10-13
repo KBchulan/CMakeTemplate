@@ -255,9 +255,16 @@ private:
   static std::string _formatTimestamp(const std::chrono::system_clock::time_point& timestamp) noexcept
   {
     auto time_t = std::chrono::system_clock::to_time_t(timestamp);
-    std::tm* time = std::localtime(&time_t);
-    return fmt::format("{:04d}-{:02d}-{:02d}-{:02d}:{:02d}", time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
-                       time->tm_hour, time->tm_min);
+    std::tm time_info{};
+
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&time_info, &time_t);
+#else
+    localtime_r(&time_t, &time_info);
+#endif
+
+    return fmt::format("{:04d}-{:02d}-{:02d}-{:02d}:{:02d}", time_info.tm_year + 1900, time_info.tm_mon + 1,
+                       time_info.tm_mday, time_info.tm_hour, time_info.tm_min);
   }
 };
 

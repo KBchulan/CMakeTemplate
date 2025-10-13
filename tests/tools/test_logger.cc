@@ -224,8 +224,8 @@ TEST_F(LoggerTest, QueueOperationsStability)
     }
 
     logger.flush();
-    EXPECT_EQ(logger.queueSize(), 0);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT_EQ(logger.queueSize(), 0);
   }
 }

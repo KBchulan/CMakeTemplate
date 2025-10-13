@@ -351,3 +351,97 @@ TEST_F(IdTest, ConcurrentMixedGeneration)
   EXPECT_EQ(all_uuids.size(), expected_uuids);
   EXPECT_EQ(all_snowflakes.size(), expected_snowflakes);
 }
+
+// 测试11: 雪花ID序列号溢出测试
+TEST_F(IdTest, SnowflakeSequenceOverflow)
+{
+  const int rapid_count = 5000;
+  std::set<std::uint64_t> id_set;
+
+  for (int i = 0; i < rapid_count; ++i)
+  {
+    auto result = tools::SnowflakeIdGenerator::generateId();
+    ASSERT_TRUE(result.has_value()) << "雪花ID生成失败 at " << i;
+    EXPECT_TRUE(id_set.insert(*result).second) << "ID重复: " << *result;
+  }
+
+  EXPECT_EQ(id_set.size(), rapid_count);
+}
+
+// 测试12: UUID错误处理测试
+TEST_F(IdTest, UuidErrorHandling)
+{
+  auto uuid_result = tools::UuidGenerator::generateUuid();
+  EXPECT_TRUE(uuid_result.has_value());
+
+  auto short_uuid_result = tools::UuidGenerator::generateShortUuid();
+  EXPECT_TRUE(short_uuid_result.has_value());
+
+  if (uuid_result)
+  {
+    EXPECT_FALSE(uuid_result->empty());
+  }
+}
+
+// 测试13: 雪花ID时间戳测试
+TEST_F(IdTest, SnowflakeTimestampValidation)
+{
+  auto id_result = tools::SnowflakeIdGenerator::generateId();
+  ASSERT_TRUE(id_result.has_value());
+
+  auto sid = *id_result;
+
+  std::uint64_t timestamp_part = (sid >> 22);
+  EXPECT_GT(timestamp_part, 0) << "时间戳部分应该大于0";
+
+  std::uint16_t worker_id = (sid >> 12) & 0x3FF;
+  EXPECT_LT(worker_id, 1024) << "worker_id应该小于1024";
+
+  std::uint16_t sequence = sid & 0xFFF;
+  EXPECT_LT(sequence, 4096) << "序列号应该小于4096";
+}
+
+// 测试14: UUID字符串转换测试
+TEST_F(IdTest, UuidStringConversion)
+{
+  auto uuid_result = tools::UuidGenerator::generateUuid();
+
+  ASSERT_TRUE(uuid_result.has_value());
+
+  const auto& uuid = *uuid_result;
+
+  std::string uuid_without_dash = uuid;
+  std::erase(uuid_without_dash, '-');
+
+  EXPECT_EQ(uuid_without_dash.length(), 32);
+
+  auto short_uuid_result = tools::UuidGenerator::generateShortUuid();
+  ASSERT_TRUE(short_uuid_result.has_value());
+  EXPECT_EQ(short_uuid_result->length(), 32);
+  EXPECT_EQ(short_uuid_result->find('-'), std::string::npos);
+}
+
+// 测试15: 雪花ID极限压力测试
+TEST_F(IdTest, SnowflakeExtremeLoad)
+{
+  const int extreme_count = 10000;
+  std::vector<std::uint64_t> ids;
+  ids.reserve(extreme_count);
+
+  auto start = std::chrono::steady_clock::now();
+
+  for (int i = 0; i < extreme_count; ++i)
+  {
+    auto result = tools::SnowflakeIdGenerator::generateId();
+    ASSERT_TRUE(result.has_value()) << "生成失败 at " << i;
+    ids.push_back(*result);
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::set<std::uint64_t> unique_ids(ids.begin(), ids.end());
+  EXPECT_EQ(unique_ids.size(), extreme_count);
+
+  EXPECT_LT(duration.count(), 1000) << "生成10000个ID用时: " << duration.count() << "ms";
+}
