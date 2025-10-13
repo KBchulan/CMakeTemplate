@@ -166,6 +166,8 @@ endif()
 find_package(benchmark QUIET)
 if(NOT benchmark_FOUND)
   include(FetchContent)
+  set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark tests")
+  set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "Disable gtest tests in benchmark")
   FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
