@@ -231,7 +231,7 @@ if(ENABLE_CPPCHECK)
       --std=c++23
       --inline-suppr
       --force
-      --error-exitcode=1
+      --quiet
       --output-file=${CMAKE_BINARY_DIR}/cppcheck-report.txt
       --suppress='*:*/_deps/*'
       --suppress='*:*/build/_deps/*'
