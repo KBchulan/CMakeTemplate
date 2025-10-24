@@ -5,7 +5,7 @@
  *
  * @author     KBchulan
  * @date       2025/09/05
- * @history    基于无锁队列的异步日志系统，极致性能优化
+ * @history    基于无锁队列的异步日志系统，进一步性能优化
  ******************************************************************************/
 
 #ifndef LOGGER_HPP
@@ -171,7 +171,7 @@ public:
   }
 
   // 获取队列长度
-  [[nodiscard, maybe_unused]] size_t queueSize() const
+  [[nodiscard]] size_t queueSize() const
   {
     return _pending_count.load(std::memory_order_acquire);
   }
@@ -179,7 +179,7 @@ public:
   // 强制刷新，等待队列清空
   [[maybe_unused]] void flush() const
   {
-    while (!_log_queue.empty())
+    while (queueSize() > 0)
     {
       std::this_thread::sleep_for(global::logger::FLUSH_INTERVAL);
     }

@@ -153,5 +153,3 @@ Included components: a lock-free queue (100M+ ops in benchmarks), a logging modu
 Three utility scripts are also provided: `format.sh` (format the entire codebase), `profile.sh` (scan for executables and collect performance data), and `workflow.sh` (run all CI workflows locally).
 
 Other artifacts are intentionally minimal—most names speak for themselves. When you add new functionality, refer to the examples in each directory for guidance.
-
-可选语言: [中文版本](docs/guide/zh-CN/README.md)。

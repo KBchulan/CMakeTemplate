@@ -23,11 +23,11 @@ option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" ON)
 # 测试选项
 option(BUILD_TESTING "Build tests" OFF)
 
-# 基准测试
-option(BUILD_BENCHMARK "Build benchmark" OFF)
-
 # 代码覆盖率
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
+
+# 基准测试
+option(BUILD_BENCHMARK "Build benchmark" OFF)
 
 # cppcheck
 option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
@@ -200,12 +200,12 @@ if(ENABLE_COVERAGE)
 
   if(LCOV AND GENHTML)
     add_custom_target(coverage
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
-      COMMAND ${LCOV} --directory . --zerocounters
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage/logs
+      COMMAND ${LCOV} --quiet --directory . --zerocounters 2>${CMAKE_BINARY_DIR}/coverage/logs/zerocounters.log
       COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-      COMMAND ${LCOV} --directory . --capture --output-file coverage.info --ignore-errors negative,inconsistent,mismatch --rc geninfo_unexecuted_blocks=0
-      COMMAND ${LCOV} --remove coverage.info '/usr/*' '*/tests/*' '*/_deps/*' '*/build/*' --output-file coverage.info.cleaned --ignore-errors unused
-      COMMAND ${GENHTML} coverage.info.cleaned --output-directory ${CMAKE_BINARY_DIR}/coverage --ignore-errors unmapped
+      COMMAND ${LCOV} --quiet --directory . --capture --output-file coverage.info --ignore-errors negative,inconsistent,mismatch --rc geninfo_unexecuted_blocks=0 2>${CMAKE_BINARY_DIR}/coverage/logs/capture.log
+      COMMAND ${LCOV} --quiet --remove coverage.info '/usr/*' '*/tests/*' '*/_deps/*' '*/build/*' --output-file coverage.info.cleaned --ignore-errors unused 2>${CMAKE_BINARY_DIR}/coverage/logs/remove.log
+      COMMAND ${GENHTML} --quiet coverage.info.cleaned --output-directory ${CMAKE_BINARY_DIR}/coverage --ignore-errors unmapped 2>${CMAKE_BINARY_DIR}/coverage/logs/genhtml.log
       COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage/index.html"
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       COMMENT "Generating code coverage report"
@@ -232,19 +232,18 @@ if(ENABLE_CPPCHECK)
       --inline-suppr
       --force
       --quiet
-      --checkers-report=${CMAKE_BINARY_DIR}/cppcheck-checkers.txt
+      --error-exitcode=1
+      --output-file=${CMAKE_BINARY_DIR}/cppcheck-report.txt
       --suppress='*:*/_deps/*'
       --suppress='*:*/build/_deps/*'
       --suppress='*:*/build/*/_deps/*'
-      --suppress=missingInclude
       --suppress=missingIncludeSystem
-      --suppress='unusedFunction:*/tests/*'
       --suppress='constParameterCallback:*/benchmark/*'
       --project=${CMAKE_BINARY_DIR}/compile_commands.json
     )
     add_custom_target(
       cppcheck
-      COMMAND ${CPPCHECK_COMMAND} 2>&1 | tee ${CMAKE_BINARY_DIR}/cppcheck-report.txt
+      COMMAND ${CPPCHECK_COMMAND}
       COMMENT "Running cppcheck"
     )
   else()

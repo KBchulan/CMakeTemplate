@@ -85,9 +85,9 @@ private:
     std::atomic<size_t> _sequence{0};
     alignas(T) std::array<std::byte, sizeof(T)> _storage;
 
-    T *data() noexcept
+    T* data() noexcept
     {
-      return std::launder(reinterpret_cast<T *>(_storage.data()));
+      return std::launder(reinterpret_cast<T*>(_storage.data()));
     }
   };
 
@@ -124,9 +124,9 @@ public:
   }
 
   template <typename... Args>
-  bool emplace(Args &&...args)
+  bool emplace(Args&&... args)
   {
-    Slot *slot;
+    Slot* slot;
     size_t pos = _enqueue_pos.load(std::memory_order_relaxed);
     BackOff backoff;
 
@@ -167,9 +167,9 @@ public:
     return true;
   }
 
-  bool pop(T &result)
+  bool pop(T& result)
   {
-    Slot *slot;
+    Slot* slot;
     size_t pos = _dequeue_pos.load(std::memory_order_relaxed);
     BackOff backoff;
 
