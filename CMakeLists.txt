@@ -1,9 +1,8 @@
 # 指定最小版本
 cmake_minimum_required(VERSION 3.25)
 
-# 默认选择 ninja
-find_program(NINJA_EXECUTABLE ninja REQUIRED)
-set(CMAKE_MAKE_PROGRAM ${NINJA_EXECUTABLE} CACHE FILEPATH "Ninja executable" FORCE)
+# 构建系统选择 ninja
+set(CMAKE_GENERATOR "Ninja" CACHE INTERNAL "")
 
 # 项目配置
 project(
