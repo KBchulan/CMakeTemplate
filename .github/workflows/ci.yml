@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lcov libgtest-dev libfmt-dev
+          sudo apt-get install -y lcov libgtest-dev libfmt-dev ninja-build
         shell: bash
 
       - name: Configure with Coverage
