@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+#
+# 自动更新 CHANGELOG
+# 在 commit 后将 commit message 追加到 CHANGELOG.md 并 amend
+#
+
+# 防止递归调用
+if [ -n "$SKIP_POST_COMMIT" ]; then
+    exit 0
+fi
+
+CHANGELOG_FILE="CHANGELOG.md"
+COMMIT_MSG=$(git log -1 --pretty=%B)
+
+# 跳过 merge commit
+if echo "$COMMIT_MSG" | grep -qE "^Merge (branch|remote-tracking branch)"; then
+    exit 0
+fi
+
+# 跳过空的 commit message
+if [ -z "$COMMIT_MSG" ]; then
+    exit 0
+fi
+
+# 解析 commit message (只取第一行)
+FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
+TYPE=$(echo "$FIRST_LINE" | sed -E 's/^([a-z]+)(\(.+\))?: .*/\1/')
+SCOPE=$(echo "$FIRST_LINE" | sed -nE 's/^[a-z]+\((.+)\): .*/\1/p')
+DESCRIPTION=$(echo "$FIRST_LINE" | sed -E 's/^[a-z]+(\(.+\))?: (.*)/\2/')
+
+# 如果没有匹配到类型，说明格式不对，跳过
+if [ "$TYPE" = "$FIRST_LINE" ]; then
+    exit 0
+fi
+
+# 获取当前日期
+DATE=$(date +%Y-%m-%d)
+
+# 创建 CHANGELOG.md 如果不存在
+if [ ! -f "$CHANGELOG_FILE" ]; then
+    cat > "$CHANGELOG_FILE" << EOF
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+EOF
+fi
+
+# 准备插入的内容
+SCOPE_TEXT=""
+if [ -n "$SCOPE" ]; then
+    SCOPE_TEXT="**[$SCOPE]**"
+fi
+
+# 根据类型选择对应的章节标题
+case "$TYPE" in
+    feat)
+        SECTION="### ✨ Features"
+        ;;
+    fix)
+        SECTION="### 🐛 Bug Fixes"
+        ;;
+    docs)
+        SECTION="### 📝 Documentation"
+        ;;
+    style)
+        SECTION="### 💄 Styles"
+        ;;
+    refactor)
+        SECTION="### ♻️ Code Refactoring"
+        ;;
+    perf)
+        SECTION="### ⚡ Performance"
+        ;;
+    test)
+        SECTION="### ✅ Tests"
+        ;;
+    build)
+        SECTION="### 📦 Build"
+        ;;
+    ci)
+        SECTION="### 👷 CI"
+        ;;
+    chore)
+        SECTION="### 🔧 Chore"
+        ;;
+    revert)
+        SECTION="### ⏪ Reverts"
+        ;;
+    *)
+        SECTION="### 🔀 Other"
+        ;;
+esac
+
+# 创建临时文件
+TEMP_FILE=$(mktemp)
+
+# 检查是否已存在今天的日期标题
+if grep -q "## \[$DATE\]" "$CHANGELOG_FILE"; then
+    # 已存在今天的日期，检查是否存在对应的 section
+    awk -v date="$DATE" -v section="$SECTION" -v scope="$SCOPE_TEXT" -v desc="$DESCRIPTION" '
+    BEGIN { in_date = 0; in_section = 0; section_found = 0; inserted = 0 }
+
+    # 匹配今天的日期标题
+    /^## \['"$DATE"'\]/ { in_date = 1; print; next }
+
+    # 如果在今天的日期内
+    in_date == 1 {
+        # 遇到新的日期标题，退出今天的日期
+        if (/^## \[/) { in_date = 0; }
+
+        # 匹配对应的 section
+        if ($0 == section) {
+            in_section = 1
+            section_found = 1
+            print
+            next
+        }
+
+        # 如果在对应的 section 内，在第一个条目前插入
+        if (in_section == 1 && /^- /) {
+            if (inserted == 0) {
+                print "-" (scope != "" ? " " scope : "") " " desc
+                inserted = 1
+            }
+        }
+
+        # 遇到新的 section，退出当前 section
+        if (in_section == 1 && /^### /) {
+            if (inserted == 0) {
+                print "-" (scope != "" ? " " scope : "") " " desc
+                inserted = 1
+            }
+            in_section = 0
+        }
+    }
+
+    # 打印所有其他行
+    { print }
+
+    END {
+        # 如果找到了 section 但没有条目，或者没找到 section
+        if (in_date == 1 && section_found == 0) {
+            # 需要在文件末尾处理的情况
+        }
+    }
+    ' "$CHANGELOG_FILE" > "$TEMP_FILE"
+
+    # 如果对应的 section 不存在，需要添加
+    if ! grep -A 1000 "## \[$DATE\]" "$TEMP_FILE" | grep -q "^$SECTION"; then
+        # 找到今天日期的位置，在其后添加新 section
+        awk -v date="$DATE" -v section="$SECTION" -v scope="$SCOPE_TEXT" -v desc="$DESCRIPTION" '
+        /^## \['"$DATE"'\]/ {
+            print
+            getline
+            print section
+            print "-" (scope != "" ? " " scope : "") " " desc
+            print ""
+            print
+            next
+        }
+        { print }
+        ' "$TEMP_FILE" > "${TEMP_FILE}.2"
+        mv "${TEMP_FILE}.2" "$TEMP_FILE"
+    fi
+else
+    # 不存在今天的日期，在文件开头插入新的日期和 section
+    awk -v date="$DATE" -v section="$SECTION" -v scope="$SCOPE_TEXT" -v desc="$DESCRIPTION" '
+    BEGIN { inserted = 0 }
+
+    # 在第一个日期标题前插入
+    /^## \[/ && inserted == 0 {
+        print "## [" date "]"
+        print ""
+        print section
+        print "-" (scope != "" ? " " scope : "") " " desc
+        print ""
+        inserted = 1
+    }
+
+    # 如果没有日期标题，在 changelog 头部之后插入
+    /^The format is based on/ && inserted == 0 {
+        print
+        getline
+        print
+        print "## [" date "]"
+        print ""
+        print section
+        print "-" (scope != "" ? " " scope : "") " " desc
+        print ""
+        inserted = 1
+        next
+    }
+
+    { print }
+    ' "$CHANGELOG_FILE" > "$TEMP_FILE"
+fi
+
+# 替换原文件
+mv "$TEMP_FILE" "$CHANGELOG_FILE"
+
+# 将 CHANGELOG.md 添加到暂存区并 amend commit
+git add "$CHANGELOG_FILE"
+SKIP_POST_COMMIT=1 git commit --amend --no-edit --no-verify
+
+exit 0

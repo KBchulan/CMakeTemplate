@@ -31,6 +31,12 @@ ninja install  # Installs headers, executables, and shared libraries into build/
 cpack          # Generates sh/tgz archives for distribution
 ```
 
+This project enforces commit message conventions. Install the Git hooks before making commits:
+
+```bash
+./scripts/install-hooks.sh
+```
+
 On top of the default configuration, several toggles are available. Enable only what you need.
 
 #### Formatting
@@ -39,6 +45,14 @@ Use the provided script to format the codebase according to `.clang-format`:
 
 ```bash
 ./scripts/format.sh
+```
+
+#### Workflow Script
+
+Run the workflow script locally for self-testing, which includes format checks, static analysis, unit tests, and more:
+
+```bash
+./scripts/workflow.sh
 ```
 
 #### Static Analysis

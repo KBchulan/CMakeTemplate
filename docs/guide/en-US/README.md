@@ -31,6 +31,12 @@ ninja install  # Installs headers, executables, and shared libraries into build/
 cpack          # Generates sh/tgz archives for distribution
 ```
 
+This project enforces commit message conventions. Install the Git hooks before making commits:
+
+```bash
+./scripts/install-hooks.sh
+```
+
 On top of the default configuration, several toggles are available. Enable only what you need.
 
 #### Formatting
@@ -39,6 +45,14 @@ Use the provided script to format the codebase according to `.clang-format`:
 
 ```bash
 ./scripts/format.sh
+```
+
+#### Workflow Script
+
+Run the workflow script locally for self-testing, which includes format checks, static analysis, unit tests, and more:
+
+```bash
+./scripts/workflow.sh
 ```
 
 #### Static Analysis
@@ -153,3 +167,5 @@ Included components: a lock-free queue (100M+ ops in benchmarks), a logging modu
 Three utility scripts are also provided: `format.sh` (format the entire codebase), `profile.sh` (scan for executables and collect performance data), and `workflow.sh` (run all CI workflows locally).
 
 Other artifacts are intentionally minimal—most names speak for themselves. When you add new functionality, refer to the examples in each directory for guidance.
+
+可选语言: [中文版本](docs/guide/zh-CN/README.md)。

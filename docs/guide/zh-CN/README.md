@@ -31,6 +31,12 @@ ninja install  # 会把所有的头文件、可执行文件及动态库下载到
 cpack          # 会进行打包，包括 sh、tgz
 ```
 
+对于 commit msg，我设置了一些规范，你需要遵守 commit msg 规范，否则无法提交:
+
+```bash
+./scripts/install-hooks.sh
+```
+
 除此以外，配置了一些可选项用于构建，可以根据需要自行选择:
 
 #### 格式化
@@ -39,6 +45,14 @@ cpack          # 会进行打包，包括 sh、tgz
 
 ```bash
 ./scripts/format.sh
+```
+
+#### 工作流脚本
+
+可以使用工作流脚本在本地进行自测，包含格式检查、静态分析、单元测试等：
+
+```bash
+./scripts/workflow.sh
 ```
 
 #### 静态分析代码
