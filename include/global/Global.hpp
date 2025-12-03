@@ -39,6 +39,15 @@ constexpr std::size_t QUEUE_CAPACITY = 16384;             // 日志队列容量 
 constexpr std::chrono::microseconds FLUSH_INTERVAL{100};  // 刷新等待间隔
 }  // namespace logger
 
+// ================
+// 服务器配置常量
+// ================
+namespace server
+{
+constexpr unsigned short DEFAULT_SERVER_PORT = 10001;  // 默认服务器端口
+constexpr std::uint16_t MAX_FLATBUFFER_SIZE = 8192;    // 最大扁平化缓冲区大小 8KB
+}  // namespace server
+
 }  // namespace global
 
 #endif  // GLOBAL_HPP

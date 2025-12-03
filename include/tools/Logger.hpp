@@ -196,7 +196,6 @@ private:
   Logger()
   {
     _worker_thread = std::jthread([this] -> void { _logWorker(); });
-    fmt::print(fmt::fg(fmt::color::green), "[Init] Async Logger initialized successfully...\n");
   }
 
   void _logWorker() noexcept

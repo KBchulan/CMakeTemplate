@@ -1,9 +1,6 @@
 # 指定最小版本
 cmake_minimum_required(VERSION 3.25)
 
-# 构建系统选择 ninja
-set(CMAKE_GENERATOR "Ninja" CACHE INTERNAL "")
-
 # 项目配置
 project(
   CMakeTemplate
@@ -151,6 +148,34 @@ if(NOT fmt_FOUND)
     GIT_TAG 11.2.0
   )
   FetchContent_MakeAvailable(fmt)
+endif()
+
+# boost url
+find_package(Boost 1.81 CONFIG REQUIRED COMPONENTS url)
+if(NOT Boost_FOUND)
+  message(FATAL_ERROR
+    "Boost >= 1.81 is required for Boost.URL.\n"
+    "Please install: sudo pacman -S boost"
+  )
+endif()
+
+# jsoncpp
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(JSONCPP jsoncpp)
+endif()
+
+if(NOT JSONCPP_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(
+    jsoncpp
+    GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+    GIT_TAG 1.9.6
+  )
+  FetchContent_MakeAvailable(jsoncpp)
+  set(JSONCPP_LINK_TARGET jsoncpp_lib)
+else()
+  set(JSONCPP_LINK_TARGET ${JSONCPP_LIBRARIES})
 endif()
 
 # Google Test

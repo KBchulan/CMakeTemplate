@@ -78,8 +78,6 @@ private:
   static_assert(std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>,
                 "the copy or move shouldn't throw error");
 
-  static constexpr size_t CACHE_LINE_SIZE = 64;
-
   struct alignas(CACHE_LINE_SIZE) Slot
   {
     std::atomic<size_t> _sequence{0};
