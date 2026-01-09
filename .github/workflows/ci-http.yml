@@ -2,8 +2,12 @@ name: CI
 
 on:
   push:
+    paths:
+      - ".github/workflows/ci-http.yml"
     branches: ["http"]
   pull_request:
+    paths:
+      - ".github/workflows/ci-http.yml"
     branches: ["http"]
 
 jobs:
@@ -17,6 +21,7 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y cppcheck libgtest-dev libbenchmark-dev libfmt-dev ninja-build libboost-all-dev libmariadb-dev libhiredis-dev libsodium-dev
+            sudo ln -s /usr/include/mariadb /usr/include/mysql
             git clone https://github.com/Thalhammer/jwt-cpp.git
             cd jwt-cpp && cmake . -B build -DJWT_BUILD_EXAMPLES=OFF -DJWT_BUILD_TESTS=OFF && sudo cmake --install build
         shell: bash
@@ -44,6 +49,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y lcov libgtest-dev libfmt-dev libbenchmark-dev ninja-build libboost-all-dev libmariadb-dev libhiredis-dev libsodium-dev
+          sudo ln -s /usr/include/mariadb /usr/include/mysql
           git clone https://github.com/Thalhammer/jwt-cpp.git
           cd jwt-cpp && cmake . -B build -DJWT_BUILD_EXAMPLES=OFF -DJWT_BUILD_TESTS=OFF && sudo cmake --install build
         shell: bash
