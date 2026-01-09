@@ -36,6 +36,7 @@ namespace logger
 {
 constexpr std::size_t MAX_MESSAGE_SIZE = 512;             // 单条日志消息最大长度
 constexpr std::size_t QUEUE_CAPACITY = 16384;             // 日志队列容量 2^14
+constexpr bool ENABLE_FILE_LOG = true;                    // 是否启用文件日志
 constexpr std::chrono::microseconds FLUSH_INTERVAL{100};  // 刷新等待间隔
 }  // namespace logger
 
