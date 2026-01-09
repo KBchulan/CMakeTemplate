@@ -1,0 +1,2 @@
+### 测试模块的请求
+GET http://localhost:10001/api/v1/health-check HTTP/1.1
