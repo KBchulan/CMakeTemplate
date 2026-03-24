@@ -162,7 +162,7 @@ CMakeTemplate/
 --- README.md          # Project overview (Chinese)
 ```
 
-Included components: a lock-free queue (100M+ ops in benchmarks), a logging module (260M+ ops), and an ID generator (50M+ ops).
+Included components: a lock-free queue (100M+ ops in benchmarks), a logging module (600M+ ops), and an ID generator (50M+ ops).
 
 Three utility scripts are also provided: `format.sh` (format the entire codebase), `profile.sh` (scan for executables and collect performance data), and `workflow.sh` (run all CI workflows locally).
 
