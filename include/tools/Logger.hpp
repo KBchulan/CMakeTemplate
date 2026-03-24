@@ -5,7 +5,7 @@
  *
  * @author     KBchulan
  * @date       2025/09/05
- * @history    基于无锁队列的异步日志系统，进一步性能优化
+ * @history    基于无锁队列的异步日志系统
  ******************************************************************************/
 
 #ifndef LOGGER_HPP
@@ -28,7 +28,6 @@
 #include <global/SuperQueue.hpp>
 #include <string>
 #include <thread>
-#include <unordered_map>
 
 namespace tools
 {
@@ -40,10 +39,13 @@ enum class LogLevel : std::uint8_t
   INFO,
   WARNING,
   ERROR,
-  FATAL
+  FATAL,
+  COUNT
 };
 
-// 日志消息结构，用于预分配内存
+constexpr std::size_t LOG_LEVEL_COUNT = static_cast<std::size_t>(LogLevel::COUNT);
+
+// 日志消息结构
 struct LogMessage
 {
   LogMessage() : _level(LogLevel::INFO)
@@ -69,6 +71,34 @@ struct LogMessage
   std::array<char, global::logger::MAX_MESSAGE_SIZE> _formatted_message;
 };
 
+// ========================
+// 每级别独立通道
+// ========================
+template <std::size_t Capacity>
+struct LevelChannel
+{
+  using Queue = global::SuperQueue<LogMessage, Capacity>;
+
+  Queue _queue;
+  mutable std::atomic<std::size_t> _pending{0};
+  std::atomic<bool> _should_stop{false};
+  std::jthread _worker;
+
+  std::ofstream _file;
+  std::size_t _batch_threshold{1};
+  std::chrono::milliseconds _flush_interval{0};
+
+  // 通知有新消息
+  void notify() const
+  {
+    const auto prev_pending = _pending.fetch_add(1, std::memory_order_release);
+    if (prev_pending == 0)
+    {
+      _pending.notify_one();
+    }
+  }
+};
+
 class Logger
 {
 public:
@@ -80,130 +110,135 @@ public:
 
   ~Logger()
   {
-    _should_stop.store(true, std::memory_order_relaxed);
-
-    _pending_count.fetch_add(1, std::memory_order_release);
-    _pending_count.notify_one();
-
-    if (_worker_thread.joinable())
-    {
-      _worker_thread.join();
-    }
+    _stopAll();
   }
 
-  // 普通打印
   template <typename... Args>
   [[maybe_unused]] void print(const std::string& format, Args&&... args) const
   {
-    if (_log_queue.emplace(LogLevel::INFO, fmt::text_style{}, format, std::forward<Args>(args)...))
+    if (_ch_info._queue.emplace(LogLevel::INFO, fmt::text_style{}, format, std::forward<Args>(args)...))
     {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
+      _ch_info.notify();
     }
   }
 
-  // 指定样式进行打印
   template <typename... Args>
   [[maybe_unused]] void print(const fmt::text_style& style, const std::string& format, Args&&... args) const
   {
-    if (_log_queue.emplace(LogLevel::INFO, style, format, std::forward<Args>(args)...))
+    if (_ch_info._queue.emplace(LogLevel::INFO, style, format, std::forward<Args>(args)...))
     {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
-    }
-  }
-
-  // 各个类型的日志
-  template <typename... Args>
-  [[maybe_unused]] void info(const std::string& format, Args&&... args) const
-  {
-    if (_log_queue.emplace(LogLevel::INFO, fmt::fg(fmt::color::green), format, std::forward<Args>(args)...))
-    {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
-    }
-  }
-
-  template <typename... Args>
-  [[maybe_unused]] void warning(const std::string& format, Args&&... args) const
-  {
-    if (_log_queue.emplace(LogLevel::WARNING, fmt::fg(fmt::color::yellow), format, std::forward<Args>(args)...))
-    {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
-    }
-  }
-
-  template <typename... Args>
-  [[maybe_unused]] void error(const std::string& format, Args&&... args) const
-  {
-    if (_log_queue.emplace(LogLevel::ERROR, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
-    {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
+      _ch_info.notify();
     }
   }
 
   template <typename... Args>
   [[maybe_unused]] void trace(const std::string& format, Args&&... args) const
   {
-    if (_log_queue.emplace(LogLevel::TRACE, fmt::fg(fmt::color::gray), format, std::forward<Args>(args)...))
+    if (_ch_trace._queue.emplace(LogLevel::TRACE, fmt::fg(fmt::color::gray), format, std::forward<Args>(args)...))
     {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
+      _ch_trace.notify();
     }
   }
 
   template <typename... Args>
   [[maybe_unused]] void debug(const std::string& format, Args&&... args) const
   {
-    if (_log_queue.emplace(LogLevel::DEBUG, fmt::fg(fmt::color::blue), format, std::forward<Args>(args)...))
+    if (_ch_debug._queue.emplace(LogLevel::DEBUG, fmt::fg(fmt::color::blue), format, std::forward<Args>(args)...))
     {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
+      _ch_debug.notify();
+    }
+  }
+
+  template <typename... Args>
+  [[maybe_unused]] void info(const std::string& format, Args&&... args) const
+  {
+    if (_ch_info._queue.emplace(LogLevel::INFO, fmt::fg(fmt::color::green), format, std::forward<Args>(args)...))
+    {
+      _ch_info.notify();
+    }
+  }
+
+  template <typename... Args>
+  [[maybe_unused]] void warning(const std::string& format, Args&&... args) const
+  {
+    if (_ch_warn._queue.emplace(LogLevel::WARNING, fmt::fg(fmt::color::yellow), format, std::forward<Args>(args)...))
+    {
+      _ch_warn.notify();
+    }
+  }
+
+  template <typename... Args>
+  [[maybe_unused]] void error(const std::string& format, Args&&... args) const
+  {
+    if (_ch_error._queue.emplace(LogLevel::ERROR, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
+    {
+      _ch_error.notify();
     }
   }
 
   template <typename... Args>
   [[maybe_unused]] void fatal(const std::string& format, Args&&... args) const
   {
-    if (_log_queue.emplace(LogLevel::FATAL, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
+    if (_ch_fatal._queue.emplace(LogLevel::FATAL, fmt::fg(fmt::color::red), format, std::forward<Args>(args)...))
     {
-      _pending_count.fetch_add(1, std::memory_order_release);
-      _pending_count.notify_one();
+      _ch_fatal.notify();
     }
   }
 
-  // 获取队列长度
+  // 所有通道 pending 之和
   [[nodiscard]] size_t queueSize() const
   {
-    return _pending_count.load(std::memory_order_acquire);
+    return _ch_trace._pending.load(std::memory_order_acquire) + _ch_debug._pending.load(std::memory_order_acquire) +
+           _ch_info._pending.load(std::memory_order_acquire) + _ch_warn._pending.load(std::memory_order_acquire) +
+           _ch_error._pending.load(std::memory_order_acquire) + _ch_fatal._pending.load(std::memory_order_acquire);
   }
 
-  // 强制刷新，等待队列清空
+  // 等待全部通道清空
   [[maybe_unused]] void flush() const
   {
     while (queueSize() > 0)
     {
-      std::this_thread::sleep_for(global::logger::FLUSH_INTERVAL);
+      std::this_thread::sleep_for(global::logger::FLUSH_POLL_INTERVAL);
     }
   }
 
 private:
-  using LogQueue = global::SuperQueue<LogMessage, global::logger::QUEUE_CAPACITY>;
-
-  mutable LogQueue _log_queue;
-  std::jthread _worker_thread;
-  std::atomic<bool> _should_stop{false};
-  mutable std::atomic<size_t> _pending_count{0};
-
-  // 文件日志相关
-  std::unordered_map<LogLevel, std::ofstream> _log_files;
+  // 6 个独立通道，容量各不相同
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_TRACE> _ch_trace;
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_DEBUG> _ch_debug;
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_INFO> _ch_info;
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_WARN> _ch_warn;
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_ERROR> _ch_error;
+  mutable LevelChannel<global::logger::QUEUE_CAPACITY_FATAL> _ch_fatal;
 
   Logger()
   {
+    _initChannelConfig();
     _initLogFiles();
-    _worker_thread = std::jthread([this] -> void { _logWorker(); });
+    _startWorkers();
+  }
+
+  // ---- 配置 ----
+
+  void _initChannelConfig()
+  {
+    _ch_trace._batch_threshold = global::logger::BATCH_THRESHOLD_TRACE;
+    _ch_trace._flush_interval = global::logger::FLUSH_INTERVAL_TRACE;
+
+    _ch_debug._batch_threshold = global::logger::BATCH_THRESHOLD_DEBUG;
+    _ch_debug._flush_interval = global::logger::FLUSH_INTERVAL_DEBUG;
+
+    _ch_info._batch_threshold = global::logger::BATCH_THRESHOLD_INFO;
+    _ch_info._flush_interval = global::logger::FLUSH_INTERVAL_INFO;
+
+    _ch_warn._batch_threshold = global::logger::BATCH_THRESHOLD_WARN;
+    _ch_warn._flush_interval = global::logger::FLUSH_INTERVAL_WARN;
+
+    _ch_error._batch_threshold = global::logger::BATCH_THRESHOLD_ERROR;
+    _ch_error._flush_interval = global::logger::FLUSH_INTERVAL_ERROR;
+
+    _ch_fatal._batch_threshold = global::logger::BATCH_THRESHOLD_FATAL;
+    _ch_fatal._flush_interval = global::logger::FLUSH_INTERVAL_FATAL;
   }
 
   void _initLogFiles()
@@ -219,64 +254,147 @@ private:
       std::filesystem::create_directories(log_dir);
     }
 
-    constexpr std::array levels = {LogLevel::TRACE,   LogLevel::DEBUG, LogLevel::INFO,
-                                   LogLevel::WARNING, LogLevel::ERROR, LogLevel::FATAL};
-
-    for (auto level : levels)
+    auto openFile = [&](auto& channel, LogLevel level)
     {
       auto file_path = log_dir / fmt::format("{}.log", _getLevelString(level));
-      _log_files[level].open(file_path, std::ios::app);
-    }
+      channel._file.open(file_path, std::ios::app);
+    };
+
+    openFile(_ch_trace, LogLevel::TRACE);
+    openFile(_ch_debug, LogLevel::DEBUG);
+    openFile(_ch_info, LogLevel::INFO);
+    openFile(_ch_warn, LogLevel::WARNING);
+    openFile(_ch_error, LogLevel::ERROR);
+    openFile(_ch_fatal, LogLevel::FATAL);
   }
 
-  void _writeToFile(const LogMessage& msg)
+  // ---- 工作线程 ----
+
+  void _startWorkers()
   {
-    if constexpr (!global::logger::ENABLE_FILE_LOG)
-    {
-      return;
-    }
+    auto launchWorker = [this](auto& channel)
+    { channel._worker = std::jthread([this, &channel] { _workerLoop(channel); }); };
 
-    if (auto iter = _log_files.find(msg._level); iter != _log_files.end() && iter->second.is_open())
-    {
-      iter->second << fmt::format("[{}] [{}] {}\n", _getLevelString(msg._level), _formatTimestamp(msg._timestamp),
-                                  msg._formatted_message.data());
-      iter->second.flush();
-    }
+    launchWorker(_ch_trace);
+    launchWorker(_ch_debug);
+    launchWorker(_ch_info);
+    launchWorker(_ch_warn);
+    launchWorker(_ch_error);
+    launchWorker(_ch_fatal);
   }
 
-  void _logWorker() noexcept
+  template <std::size_t Cap>
+  void _workerLoop(LevelChannel<Cap>& channel) noexcept
   {
     LogMessage msg;
+    std::size_t since_last_flush = 0;
+    auto last_flush_time = std::chrono::steady_clock::now();
 
     while (true)
     {
-      size_t expected = 0;
-      _pending_count.wait(expected, std::memory_order_acquire);
+      // 等待通知或超时
+      std::size_t expected = 0;
+      channel._pending.wait(expected, std::memory_order_acquire);
 
-      if (_should_stop.load(std::memory_order_relaxed))
+      if (channel._should_stop.load(std::memory_order_relaxed))
       {
         break;
       }
 
-      // 批量处理消息
-      while (_log_queue.pop(msg))
+      // 批量消费
+      while (channel._queue.pop(msg))
       {
-        fmt::print(msg._style, "[{}] [{}] {}\n", _getLevelString(msg._level), _formatTimestamp(msg._timestamp),
-                   msg._formatted_message.data());
-        _writeToFile(msg);
+        _processMessage(msg, channel._file);
+        channel._pending.fetch_sub(1, std::memory_order_acq_rel);
+        ++since_last_flush;
 
-        _pending_count.fetch_sub(1, std::memory_order_acq_rel);
+        // 达到批量阈值 → 刷盘
+        if (since_last_flush >= channel._batch_threshold)
+        {
+          _flushFile(channel._file);
+          since_last_flush = 0;
+          last_flush_time = std::chrono::steady_clock::now();
+        }
+      }
+
+      // 定时刷盘：即使没达到阈值，超过间隔也刷
+      auto now = std::chrono::steady_clock::now();
+      if (since_last_flush > 0 &&
+          (channel._flush_interval.count() == 0 || now - last_flush_time >= channel._flush_interval))
+      {
+        _flushFile(channel._file);
+        since_last_flush = 0;
+        last_flush_time = now;
       }
     }
 
-    // 清空剩余日志
-    while (_log_queue.pop(msg))
+    // 停止前清空残余
+    while (channel._queue.pop(msg))
     {
-      fmt::print(msg._style, "[{}] [{}] {}\n", _getLevelString(msg._level), _formatTimestamp(msg._timestamp),
-                 msg._formatted_message.data());
-      _writeToFile(msg);
+      _processMessage(msg, channel._file);
+    }
+    _flushFile(channel._file);
+  }
+
+  static void _processMessage(const LogMessage& msg, std::ofstream& file)
+  {
+    // 统一格式化一次，控制台与文件复用同一份文本
+    fmt::memory_buffer line_buffer;
+    fmt::format_to(std::back_inserter(line_buffer), "[{}] [{}] {}\n", _getLevelString(msg._level),
+                   _formatTimestamp(msg._timestamp), msg._formatted_message.data());
+    const auto line_view = std::string_view(line_buffer.data(), line_buffer.size());
+
+    // 控制台输出
+    if constexpr (global::logger::ENABLE_CONSOLE_LOG)
+    {
+      fmt::print(msg._style, "{}", line_view);
+    }
+
+    // 文件输出
+    if constexpr (global::logger::ENABLE_FILE_LOG)
+    {
+      if (file.is_open())
+      {
+        file.write(line_view.data(), static_cast<std::streamsize>(line_view.size()));
+      }
     }
   }
+
+  static void _flushFile(std::ofstream& file)
+  {
+    if constexpr (global::logger::ENABLE_FILE_LOG)
+    {
+      if (file.is_open())
+      {
+        file.flush();
+      }
+    }
+  }
+
+  void _stopAll()
+  {
+    auto stopOne = [](auto& channel)
+    {
+      channel._should_stop.store(true, std::memory_order_relaxed);
+
+      channel._pending.fetch_add(1, std::memory_order_release);
+      channel._pending.notify_one();
+
+      if (channel._worker.joinable())
+      {
+        channel._worker.join();
+      }
+    };
+
+    stopOne(_ch_trace);
+    stopOne(_ch_debug);
+    stopOne(_ch_info);
+    stopOne(_ch_warn);
+    stopOne(_ch_error);
+    stopOne(_ch_fatal);
+  }
+
+  // ---- 工具函数 ----
 
   static constexpr std::string_view _getLevelString(LogLevel level) noexcept
   {

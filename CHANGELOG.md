@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2026-03-24]
+
+### ✨ Features
+- **[log]** 优化日志组件，短消息可达 600M 吞吐
+
 ## [2026-01-10]
 
 ### 🐛 Bug Fixes
